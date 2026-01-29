@@ -1,4 +1,3 @@
-
 /*
    Based on 31337Ghost's reference code from https://github.com/nkolban/esp32-snippets/issues/385#issuecomment-362535434
    which is based on pcbreflux's Arduino ESP32 port of Neil Kolban's example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
@@ -20,10 +19,10 @@
 #include <BLEBeacon.h>
 
 #define DEVICE_NAME         "ESP32"
-#define SERVICE_UUID        "7A0247E7-8E88-409B-A959-AB5092DDB03E"
-#define BEACON_UUID         "2D7A9F0C-E0E8-4CC9-A71B-A21DB2D034A1"
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"//"7A0247E7-8E88-409B-A959-AB5092DDB03E"
+#define BEACON_UUID         "00000000-0000-0000-0000-000000000000"
 #define BEACON_UUID_REV     "A134D0B2-1DA2-1BA7-C94C-E8E00C9F7A2D"
-#define CHARACTERISTIC_UUID "82258BAA-DF72-47E8-99BC-B73D7ECD08A5"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"//"82258BAA-DF72-47E8-99BC-B73D7ECD08A5"
 
 BLEServer *pServer;
 BLECharacteristic *pCharacteristic;
