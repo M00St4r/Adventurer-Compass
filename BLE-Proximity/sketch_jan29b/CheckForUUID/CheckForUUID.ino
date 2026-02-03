@@ -4,7 +4,9 @@
 #include <BLEAdvertisedDevice.h>
 // String knownBLEAddresses[] = {"6E:bc:55:18:cf:7b", "53:3c:cb:56:36:02", "40:99:4b:75:7d:2f", "5c:5b:68:6f:34:96"};
 static BLEUUID targetBeaconUUID("00000000-0000-0000-0000-000000000000");
-int RSSI_THRESHOLD = -100;
+
+String targetUUID = "00000000000000000000000000000000";
+int RSSI_THRESHOLD = -60;
 bool device_found;
 int scanTime = 1; //In seconds
 
@@ -15,8 +17,16 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-
     if (!advertisedDevice.haveManufacturerData()) return;
+    // Serial.print("Service Data UUID: ");
+    // Serial.println(advertisedDevice.getServiceUUID());
+    // if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(BLEUUID("00000000-0000-0000-0000-000000000000"))) {
+    //   // Found the device with the target UUID
+    //   BLEDevice::getScan()->stop();
+    //   Serial.println("we found the target device");
+    //   device_found = true;
+    //   // Proceed with connection
+    // }
 
     String data = advertisedDevice.getManufacturerData();
 
@@ -44,9 +54,19 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
     BLEUUID beaconUUID(uuidStr);
 
+    //String ManufData = advertisedDevice.toString().c_str();
+
+    // Serial.print("ManufData: ");
+    // Serial.println(ManufData);
+    // Serial.print("UUID: ");
+
+    // Serial.println(ManufData.substring(69, 101));
+
     if (beaconUUID.equals(targetBeaconUUID)) {
       device_found = true;
       Serial.println("🎯 iBeacon UUID MATCH");
+      BLEDevice::getScan()->stop();
+
     }
 
     // // We have found a device, let us now see if it contains the service we are looking for.
@@ -74,6 +94,8 @@ void setup() {
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
   pBLEScan->setInterval(100); // set Scan interval
   pBLEScan->setWindow(99);  // less or equal setInterval value
+
+  Serial.print(targetBeaconUUID.toString().c_str());
 }
 void loop() {
   device_found = false;
@@ -82,16 +104,39 @@ void loop() {
   for (int i = 0; i < foundDevices->getCount(); i++)
   {
     BLEAdvertisedDevice device = foundDevices->getDevice(i);
-    int rssi = device.getRSSI();
-    Serial.print("RSSI: ");
-    Serial.println(rssi);
-    if (rssi > RSSI_THRESHOLD && device_found == true){
-      digitalWrite(LED_BUILTIN, HIGH);
-      Serial.println("write LED HIGH");
+
+    Serial.print("Device Name: ");
+    Serial.println(device.getName());
+    Serial.print("Manufacturer Data: ");
+    Serial.println(device.getManufacturerData());
+
+    String data = device.getManufacturerData();
+
+    String input = data;
+    String hexString = "";
+
+    for (int i = 0; i < input.length(); i++) {
+      char c = input.charAt(i);
+      char hexChar[3];
+      sprintf(hexChar, "%02X", c); // Format as uppercase hex with leading zero
+      hexString += hexChar;
     }
-    else{
-      digitalWrite(LED_BUILTIN, LOW);
-      Serial.println("write LED LOW");
+
+    String deviceUUID = hexString.substring(8, 40);
+
+    Serial.println("Device UUID: " + deviceUUID);
+
+    if (deviceUUID == targetUUID) {
+      int rssi = device.getRSSI();
+      Serial.println(rssi);
+      if (rssi > RSSI_THRESHOLD){
+        digitalWrite(LED_BUILTIN, HIGH);
+        Serial.println("write LED HIGH");
+      }
+      else{
+        digitalWrite(LED_BUILTIN, LOW);
+        Serial.println("write LED LOW");
+      }
     }
   }
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory

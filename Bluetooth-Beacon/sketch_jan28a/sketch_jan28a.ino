@@ -100,6 +100,7 @@ void init_beacon() {
 
   BLEAdvertisementData advertisementData;
   advertisementData.setFlags(0x1A);
+  //advertisementData.setManufacturerData("00000000-0000-0000-0000-000000000000");
   advertisementData.setManufacturerData(myBeacon.getData());
   pAdvertising->setAdvertisementData(advertisementData);
 
