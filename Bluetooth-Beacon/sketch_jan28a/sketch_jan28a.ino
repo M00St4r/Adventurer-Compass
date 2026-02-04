@@ -130,5 +130,5 @@ void loop() {
     pCharacteristic->notify();
     value++;
   }
-  delay(2000);
+  delay(10);
 }
