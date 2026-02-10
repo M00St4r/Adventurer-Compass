@@ -12,14 +12,14 @@
 static BLEUUID targetBeaconUUID("00000000-0000-0000-0000-000000000000");
 
 String targetUUID = "00000000000000000000000000000000";
-int RSSI_THRESHOLD = -60;
+int RSSI_THRESHOLD = -100;
 bool device_found;
 int scanTime = 1; //In seconds
 
 int vibrator = 12;
 
 int maxRSSI = -30;
-int minRSSI = -90;
+int minRSSI = -100;
 int rssi;
 
 #define BUFFER_SIZE 5
@@ -61,14 +61,17 @@ int popStation() {
 
 void setVibratorIntensity(int state, unsigned long delta){
 
+  unsigned long interval = 1000;
+  unsigned long powerInterval = 100;
+
   switch(state){
     case 0:
       digitalWrite(vibrator, LOW);
       vibratorStartTime = 0;
       break;
     case 1:
-      unsigned long interval = 1000;
-      unsigned long powerInterval = 100;
+      interval = 100;
+      powerInterval = 100;
       vibratorRunTime += delta;
 
       if (vibratorRunTime >= interval){
@@ -84,8 +87,8 @@ void setVibratorIntensity(int state, unsigned long delta){
       }
       break;
     case 2:
-      unsigned long interval = 500;
-      unsigned long powerInterval = 100;
+      interval = 500;
+      powerInterval = 100;
       vibratorRunTime += delta;
 
       if (vibratorRunTime >= interval){
@@ -101,8 +104,8 @@ void setVibratorIntensity(int state, unsigned long delta){
       }
       break;
     case 3:
-      unsigned long interval = 100;
-      unsigned long powerInterval = 100;
+      interval = 1000;
+      powerInterval = 100;
       vibratorRunTime += delta;
 
       if (vibratorRunTime >= interval){
@@ -201,10 +204,10 @@ void loop() {
   currentTime = millis();
   deltaTime = currentTime - lastTime;
 
-  Serial.print("Delta Time: ");
-  Serial.println(deltaTime);
-  Serial.print("millis: ");
-  Serial.println(currentTime);
+  // Serial.print("Delta Time: ");
+  // Serial.println(deltaTime);
+  // Serial.print("millis: ");
+  // Serial.println(currentTime);
 
   //ledOFF();
 
@@ -226,10 +229,12 @@ void loop() {
       if (rssi > RSSI_THRESHOLD){
         pushStation(1);
         pushRssi(rssi);
+        Serial.print("Rssi: ");
+        Serial.println(rssi);
       }
     }else{
       pushStation(0);
-      pushRssi(0);
+      //pushRssi(-100);
     }
   }
 
@@ -239,6 +244,8 @@ void loop() {
     rssiAverage += rssiBuffer[i];
   }
   rssiAverage /= BUFFER_SIZE;
+  Serial.print("Average rssi: ");
+  Serial.println(rssiAverage);
 
   // calculate average device presence
   float average = 0;
@@ -246,8 +253,8 @@ void loop() {
     average += proximityBuffer[i];
   }
   average /= BUFFER_SIZE;
-
-  Serial.println(average);
+  // Serial.print("Device Average");
+  // Serial.println(average);
 
   if(average > 0){
     if(rssiAverage > -40){
