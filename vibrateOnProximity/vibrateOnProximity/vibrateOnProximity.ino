@@ -61,8 +61,8 @@ int popStation() {
 
 void setVibratorIntensity(int state, unsigned long delta){
 
-  unsigned long interval = 1000;
-  unsigned long powerInterval = 100;
+  unsigned long interval;
+  unsigned long powerInterval;
 
   switch(state){
     case 0:
