@@ -6,6 +6,7 @@ int loopDelay = 100;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  pinMode(buttonPin, INPUT);
 }
 
 void loop() {
