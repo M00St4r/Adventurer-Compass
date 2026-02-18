@@ -4,6 +4,9 @@
 #include <BLEAdvertisedDevice.h>
 /* neopixel library */
 #include <Adafruit_NeoPixel.h>
+/* libraries for RFID/NFC */
+#include <SPI.h>
+#include <MFRC522.h>
 
 int loopDelay = 100;
 
@@ -54,6 +57,13 @@ bool blinking = false;
 bool blinkOn = false;
 int blinkTimer = 0;
 int idleTimer = 0;
+
+/* NFC setup */
+#define SS_PIN  5  // ESP32 pin GPIO5 
+#define RST_PIN 27 // ESP32 pin GPIO27 
+#define userLimit 5
+String checkedIds[userLimit];
+MFRC522 rfid(SS_PIN, RST_PIN);
 
 //Interrupt timer
 uint32_t ISR_millis = 0;
@@ -262,6 +272,7 @@ if (blinking == true) {
   }
 }
 
+
 // TEST QUEST
 
 #define COLLECTABLE_ITEMS_COUNT 3
@@ -273,9 +284,75 @@ int inventoryIdx = 0;
 
 collectableItems = [/*UID 1, UID 2, ...*/ ];
 
+void checkNFCScanner() {
+  bool objectFound = false;
+  bool objectCollectable = false;
+  if (rfid.PICC_IsNewCardPresent() && blinking == false) { // new tag is available
+    if (rfid.PICC_ReadCardSerial()) { // NUID has been read
+      MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
+      Serial.print("RFID/NFC Tag Type: ");
+      Serial.println(rfid.PICC_GetTypeName(piccType));
+
+      uidString = extractUUID(String(rfid.uid.uidByte));
+      
+      for (i = 0; i<COLLECTABLE_ITEMS_COUNT; i++) {
+        if(collectableItems[i] == uidString) {
+          objectCollectable = true;
+          break;
+        }
+      }
+      for (int i = 0; i < COLLECTABLE_ITEMS_COUNT -1; i++) {
+        if (playerInventory[i] == uidString) {
+          objectFound = true;
+          Serial.println("Object already found");
+          break;
+        }
+      }
+
+      if (objectFound == false && objectCollectable == true) {
+        for (int i = 0; i < allObjects; i++) {
+
+          Serial.println(playerInventory[i]+ String(" : ") + String(i));
+
+          if (playerInventory[i] == "") {
+            playerInventory[i] = uidString;
+            break;
+          }else if(i == allObjects-1){
+            Serial.println("All Objects Found");
+          }
+        }      
+      }
+      // print UID in Serial Monitor in the hex format
+      Serial.print("UID:");
+      for (int i = 0; i < rfid.uid.size; i++) {
+        Serial.print(rfid.uid.uidByte[i] < 0x10 ? " 0" : " ");
+        Serial.print(rfid.uid.uidByte[i], HEX);
+      }
+
+
+      Serial.println();
+
+      rfid.PICC_HaltA(); // halt PICC
+      rfid.PCD_StopCrypto1(); // stop encryption on PCD
+    }
+  }
+}
+
 void pushInventory(char value) {
   playerInventory[inventoryIdx] = value;
   inventoryIdx = (inventoryIdx + 1) % COLLECTABLE_ITEMS_COUNT;
+}
+
+void ledPercentage() {
+  int allObjects = sizeof(collectableItems);
+  int foundObjects = sizeof(playerInventory);
+  float objectPercent = foundObjects/allObjects;
+  int ledPercent = round(NUMPIXELS*objectPercent);
+  pixels.clear();
+  for (int i = 0; i < ledPercent; i++) {
+    pixels.setPixelColor(i, pixels.Color(colorR, colorB, colorG));
+  }
+  pixels.show();
 }
 
 
@@ -374,6 +451,8 @@ void loop() {
         break;
 
       case QUEST:
+        checkNFCScanner();
+        ledPercentage();
           for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
             for (int j = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
               if(collectableItems[i] == playerInventory[j]){
