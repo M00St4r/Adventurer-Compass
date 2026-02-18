@@ -10,7 +10,7 @@ int loopDelay = 100;
 enum STATE {IDLE, SEARCH, QUEST};
 STATE compassState = IDLE;
 
-static BLEUUID targetBeaconUUID("00000000-0000-0000-0000-000000000000");
+//static BLEUUID targetBeaconUUID("00000000-0000-0000-0000-000000000000");
 
 String targetUUID = "00000000000000000000000000000000";
 int RSSI_THRESHOLD = -100;
@@ -113,6 +113,7 @@ void setVibratorIntensity(int state, unsigned long delta){
     case 0:
       digitalWrite(vibratorPIN, LOW);
       vibratorStartTime = 0;
+      vibratorPowerTime = 0;
       break;
     case 1:
       interval = 100;
@@ -125,6 +126,7 @@ void setVibratorIntensity(int state, unsigned long delta){
 
         if(vibratorPowerTime >= powerInterval){
           vibratorRunTime = 0;
+          vibratorPowerTime = 0;
         }
       }else {
         digitalWrite(vibratorPIN, LOW);
@@ -142,6 +144,7 @@ void setVibratorIntensity(int state, unsigned long delta){
 
         if(vibratorPowerTime >= powerInterval){
           vibratorRunTime = 0;
+          vibratorPowerTime = 0;
         }
       }else {
         digitalWrite(vibratorPIN, LOW);
@@ -159,6 +162,7 @@ void setVibratorIntensity(int state, unsigned long delta){
 
         if(vibratorPowerTime >= powerInterval){
           vibratorRunTime = 0;
+          vibratorPowerTime = 0;
         }
       }else {
         digitalWrite(vibratorPIN, LOW);
@@ -258,6 +262,23 @@ if (blinking == true) {
   }
 }
 
+// TEST QUEST
+
+#define COLLECTABLE_ITEMS_COUNT 3
+// the items that can be collected
+char collectableItems[COLLECTABLE_ITEMS_COUNT];
+// the items the Player has collected
+char playerInventory[COLLECTABLE_ITEMS_COUNT];
+int inventoryIdx = 0;
+
+collectableItems = [/*UID 1, UID 2, ...*/ ];
+
+void pushInventory(char value) {
+  playerInventory[inventoryIdx] = value;
+  inventoryIdx = (inventoryIdx + 1) % COLLECTABLE_ITEMS_COUNT;
+}
+
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(vibratorPIN, OUTPUT);
@@ -271,7 +292,7 @@ void setup() {
   pBLEScan->setInterval(100); // set Scan interval
   pBLEScan->setWindow(99);  // less or equal setInterval value
   //pBLEScan->start(0,true); // continous scan
-  Serial.print(targetBeaconUUID.toString().c_str());
+  //Serial.print(targetBeaconUUID.toString().c_str());
 }
 
 void loop() {
@@ -283,77 +304,89 @@ void loop() {
   //Serial.println(compassState);
 
   // Declare variables outside the switch
-    BLEScanResults* foundDevices = nullptr;
-    float rssiAverage = 0;
-    float average = 0;
-    int rssi = 0;
+  BLEScanResults* foundDevices = nullptr;
+  float rssiAverage = 0;
+  float average = 0;
+  int rssi = 0;
+  // quest vars
+  int collectedItems = 0;
 
-    switch (compassState) {
-        case IDLE:
-          Serial.println("IDLEING");
-          delay(loopDelay);
-          break;
+  switch (compassState) {
+      case IDLE:
+        Serial.println("IDLEING");
+        delay(loopDelay);
+        break;
 
-        case SEARCH:
-          neopixelIdle();
-          Serial.println("Searching");
-          foundDevices = pBLEScan->start(0, true);
-          Serial.print("Devices found: ");
-          Serial.println(foundDevices->getCount());
+      case SEARCH:
+        neopixelIdle();
+        Serial.println("Searching");
+        foundDevices = pBLEScan->start(0, true);
+        Serial.print("Devices found: ");
+        Serial.println(foundDevices->getCount());
 
-          for (int i = 0; i < foundDevices->getCount(); i++) {
-              BLEAdvertisedDevice device = foundDevices->getDevice(i);
-              String deviceUUID = extractUUID(device.getManufacturerData());
+        for (int i = 0; i < foundDevices->getCount(); i++) {
+            BLEAdvertisedDevice device = foundDevices->getDevice(i);
+            String deviceUUID = extractUUID(device.getManufacturerData());
 
-              if (deviceUUID == targetUUID) {
-                  rssi = device.getRSSI();
-                  if (rssi > RSSI_THRESHOLD) {
-                      pushStation(1);
-                      pushRssi(rssi);
-                      Serial.print("Rssi: ");
-                      Serial.println(rssi);
-                  }
-              } else {
-                  pushStation(0);
+            if (deviceUUID == targetUUID) {
+                rssi = device.getRSSI();
+                if (rssi > RSSI_THRESHOLD) {
+                    pushStation(1);
+                    pushRssi(rssi);
+                    Serial.print("Rssi: ");
+                    Serial.println(rssi);
+                }
+            } else {
+                pushStation(0);
+            }
+        }
+
+        // Calculate average rssi from last 5 entries
+        rssiAverage = 0;
+        for (int i = 0; i < BUFFER_SIZE; i++) {
+            rssiAverage += rssiBuffer[i];
+        }
+        rssiAverage /= BUFFER_SIZE;
+        Serial.print("Average rssi: ");
+        Serial.println(rssiAverage);
+
+        // Calculate average device presence
+        average = 0;
+        for(int i = 0; i < BUFFER_SIZE; i++) {
+            average += proximityBuffer[i];
+        }
+        average /= BUFFER_SIZE;
+
+        if(average > 0) {
+            if(rssiAverage > -40) {
+                setVibratorIntensity(1, deltaTime);
+            } else if(rssiAverage > -60) {
+                setVibratorIntensity(2, deltaTime);
+            } else if(rssiAverage > -80) {
+                setVibratorIntensity(3, deltaTime);
+            }
+        } else {
+            setVibratorIntensity(0, deltaTime);
+        }
+
+        pBLEScan->clearResults();
+        delay(1); // Wait before next scan
+        break;
+
+      case QUEST:
+          // Implement your quest logic here
+          // Add your quest-specific code here
+          for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
+            for (int j = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
+              if(collectableItems[i] == playerInventory[j]){
+                collectedItems++;
               }
+            }
           }
-
-          // Calculate average rssi from last 5 entries
-          rssiAverage = 0;
-          for (int i = 0; i < BUFFER_SIZE; i++) {
-              rssiAverage += rssiBuffer[i];
+          if (collecedItems == COLLECTABLE_ITEMS_COUNT){
+            //quest completed
           }
-          rssiAverage /= BUFFER_SIZE;
-          Serial.print("Average rssi: ");
-          Serial.println(rssiAverage);
-
-          // Calculate average device presence
-          average = 0;
-          for(int i = 0; i < BUFFER_SIZE; i++) {
-              average += proximityBuffer[i];
-          }
-          average /= BUFFER_SIZE;
-
-          if(average > 0) {
-              if(rssiAverage > -40) {
-                  setVibratorIntensity(1, deltaTime);
-              } else if(rssiAverage > -60) {
-                  setVibratorIntensity(2, deltaTime);
-              } else if(rssiAverage > -80) {
-                  setVibratorIntensity(3, deltaTime);
-              }
-          } else {
-              setVibratorIntensity(0, deltaTime);
-          }
-
-          pBLEScan->clearResults();
-          delay(1); // Wait before next scan
           break;
-
-        case QUEST:
-            // Implement your quest logic here
-            // Add your quest-specific code here
-            break;
     }
     delay(25);
 }
