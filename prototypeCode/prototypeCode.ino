@@ -418,11 +418,12 @@ void loop() {
   switch (compassState) {
       case IDLE:
         Serial.println("IDLEING");
+        pixels.clear();
         delay(loopDelay);
         break;
 
       case SEARCH:
-        neopixelIdle();
+        //neopixelIdle();
         Serial.println("Searching");
         foundDevices = pBLEScan->start(0, true);
         Serial.print("Devices found: ");
