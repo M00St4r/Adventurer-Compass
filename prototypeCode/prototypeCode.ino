@@ -43,7 +43,7 @@ unsigned long vibratorRunTime = 0;
 unsigned long vibratorPowerTime = 0;
 
 /* neopixel setup*/
-int ledPin = 34;
+int ledPin = 2;
 #define NUMPIXELS 24
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, ledPin, NEO_GRB + NEO_KHZ800);
 int delayCircle = 100;
@@ -277,25 +277,39 @@ if (blinking == true) {
 
 #define COLLECTABLE_ITEMS_COUNT 3
 // the items that can be collected
-char collectableItems[COLLECTABLE_ITEMS_COUNT];
+String collectableItems[COLLECTABLE_ITEMS_COUNT] = {"0426AEA37E2681", "0431FEA37E2681", "2D2B3A04"};
 // the items the Player has collected
-char playerInventory[COLLECTABLE_ITEMS_COUNT];
+String playerInventory[COLLECTABLE_ITEMS_COUNT];
 int inventoryIdx = 0;
-
-collectableItems = [/*UID 1, UID 2, ...*/ ];
+int collectedItems = 0;
 
 void checkNFCScanner() {
   bool objectFound = false;
   bool objectCollectable = false;
-  if (rfid.PICC_IsNewCardPresent() && blinking == false) { // new tag is available
+  if (rfid.PICC_IsNewCardPresent()) { // new tag is available
+    Serial.println("nfc tag is present");
     if (rfid.PICC_ReadCardSerial()) { // NUID has been read
       MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
       Serial.print("RFID/NFC Tag Type: ");
       Serial.println(rfid.PICC_GetTypeName(piccType));
 
-      uidString = extractUUID(String(rfid.uid.uidByte));
+      String uidString;// = extractUUID(String(rfid.uid.uidByte, HEX));
       
-      for (i = 0; i<COLLECTABLE_ITEMS_COUNT; i++) {
+      
+
+      // print UID in Serial Monitor in the hex format
+      Serial.print("UID:");
+      for (int i = 0; i < rfid.uid.size; i++) {
+        Serial.print(rfid.uid.uidByte[i] < 0x10 ? " 0" : "");
+        Serial.print(rfid.uid.uidByte[i], HEX);
+        char buffer[3];
+        sprintf(buffer, "%02X", rfid.uid.uidByte[i]);
+        uidString += buffer;
+      }
+
+      Serial.println(uidString);
+
+      for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++) {
         if(collectableItems[i] == uidString) {
           objectCollectable = true;
           break;
@@ -310,23 +324,29 @@ void checkNFCScanner() {
       }
 
       if (objectFound == false && objectCollectable == true) {
-        for (int i = 0; i < allObjects; i++) {
+        for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++) {
 
           Serial.println(playerInventory[i]+ String(" : ") + String(i));
 
           if (playerInventory[i] == "") {
             playerInventory[i] = uidString;
+            collectedItems++;
+            ledPercentage();
             break;
-          }else if(i == allObjects-1){
+          }else if(i == COLLECTABLE_ITEMS_COUNT-1){
             Serial.println("All Objects Found");
           }
-        }      
-      }
-      // print UID in Serial Monitor in the hex format
-      Serial.print("UID:");
-      for (int i = 0; i < rfid.uid.size; i++) {
-        Serial.print(rfid.uid.uidByte[i] < 0x10 ? " 0" : " ");
-        Serial.print(rfid.uid.uidByte[i], HEX);
+        }
+        for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i ++){
+        Serial.print("collectable Item ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(collectableItems[i]);
+        Serial.print("Inventory Item ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(playerInventory[i]);
+      }   
       }
 
 
@@ -344,13 +364,16 @@ void pushInventory(char value) {
 }
 
 void ledPercentage() {
-  int allObjects = sizeof(collectableItems);
-  int foundObjects = sizeof(playerInventory);
-  float objectPercent = foundObjects/allObjects;
+  float objectPercent = (float)collectedItems/COLLECTABLE_ITEMS_COUNT;
   int ledPercent = round(NUMPIXELS*objectPercent);
+  Serial.println("LED numbers:");
+  Serial.println(objectPercent);
+  Serial.println(ledPercent);
+  Serial.println(collectedItems);
+  Serial.println(COLLECTABLE_ITEMS_COUNT);
   pixels.clear();
   for (int i = 0; i < ledPercent; i++) {
-    pixels.setPixelColor(i, pixels.Color(colorR, colorB, colorG));
+    pixels.setPixelColor(i, pixels.Color(colorR, colorG, colorB));
   }
   pixels.show();
 }
@@ -360,6 +383,10 @@ void setup() {
   // put your setup code here, to run once:
   pinMode(vibratorPIN, OUTPUT);
   Serial.begin(115200); //Enable UART on ESP32
+  SPI.begin();
+  rfid.PCD_Init();
+  pixels.begin();
+  pixels.clear();
   pinMode(button1.PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(button1.PIN), isr, FALLING);
   BLEDevice::init("");
@@ -386,7 +413,7 @@ void loop() {
   float average = 0;
   int rssi = 0;
   // quest vars
-  int collectedItems = 0;
+  int collectedCounter = 0;
 
   switch (compassState) {
       case IDLE:
@@ -440,7 +467,10 @@ void loop() {
             } else if(rssiAverage > -60) {
                 setVibratorIntensity(2, deltaTime);
             } else if(rssiAverage > -80) {
-                setVibratorIntensity(3, deltaTime);
+                //setVibratorIntensity(3, deltaTime);
+                compassState = QUEST;
+                BLEDevice::getScan()->stop();
+                Serial.println("Quest Started!!!");
             }
         } else {
             setVibratorIntensity(0, deltaTime);
@@ -452,18 +482,25 @@ void loop() {
 
       case QUEST:
         checkNFCScanner();
-        ledPercentage();
           for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
-            for (int j = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
+            for (int j = 0; j < COLLECTABLE_ITEMS_COUNT; j++){
               if(collectableItems[i] == playerInventory[j]){
-                collectedItems++;
+                collectedCounter++;
               }
             }
           }
-          if (collecedItems == COLLECTABLE_ITEMS_COUNT){
-            //quest completed
+
+          
+
+          if (collectedCounter == COLLECTABLE_ITEMS_COUNT){
+            Serial.println("Quest Completed");
+            blinking = false;
+            blinkOn = false;
+            neopixelIdle();
           }
+          //Serial.println(collectedCounter);
+          delay(1);
           break;
     }
-    delay(25);
+    //delay(25);
 }
