@@ -374,8 +374,6 @@ void loop() {
         break;
 
       case QUEST:
-          // Implement your quest logic here
-          // Add your quest-specific code here
           for (int i = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
             for (int j = 0; i < COLLECTABLE_ITEMS_COUNT; i++){
               if(collectableItems[i] == playerInventory[j]){
