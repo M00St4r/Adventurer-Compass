@@ -30,7 +30,7 @@ int rssi;
 int proximityBuffer[BUFFER_SIZE];
 int stationIdx = 0;
 
-int rssiBuffer[BUFFER_SIZE];
+int rssiBuffer[BUFFER_SIZE] = {-100, -100, -100, -100, -100};
 int rssiIdx = 0;
 
 unsigned long lastTime = 0;
@@ -387,6 +387,11 @@ void setup() {
   rfid.PCD_Init();
   pixels.begin();
   pixels.clear();
+  for (int i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  }
+  pixels.show();
+  pixels.clear();
   pinMode(button1.PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(button1.PIN), isr, FALLING);
   BLEDevice::init("");
@@ -418,6 +423,11 @@ void loop() {
   switch (compassState) {
       case IDLE:
         Serial.println("IDLEING");
+        pixels.clear();
+        for (int i = 0; i < NUMPIXELS; i++) {
+          pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+        }
+        pixels.show();
         pixels.clear();
         delay(loopDelay);
         break;
@@ -464,14 +474,14 @@ void loop() {
 
         if(average > 0) {
             if(rssiAverage > -40) {
-                setVibratorIntensity(1, deltaTime);
-            } else if(rssiAverage > -60) {
-                setVibratorIntensity(2, deltaTime);
-            } else if(rssiAverage > -80) {
-                //setVibratorIntensity(3, deltaTime);
+                //setVibratorIntensity(1, deltaTime);
                 compassState = QUEST;
                 BLEDevice::getScan()->stop();
                 Serial.println("Quest Started!!!");
+            } else if(rssiAverage > -60) {
+                setVibratorIntensity(2, deltaTime);
+            } else if(rssiAverage > -80) {
+                setVibratorIntensity(3, deltaTime);
             }
         } else {
             setVibratorIntensity(0, deltaTime);
@@ -490,8 +500,6 @@ void loop() {
               }
             }
           }
-
-          
 
           if (collectedCounter == COLLECTABLE_ITEMS_COUNT){
             Serial.println("Quest Completed");
