@@ -277,7 +277,7 @@ if (blinking == true) {
 
 #define COLLECTABLE_ITEMS_COUNT 3
 // the items that can be collected
-String collectableItems[COLLECTABLE_ITEMS_COUNT] = {"0426AEA37E2681", "0431FEA37E2681", "2D2B3A04"};
+String collectableItems[COLLECTABLE_ITEMS_COUNT] = {"04CE91A37E2681", "04CD84A37E2681", "042C8BA37E2681"};
 // the items the Player has collected
 String playerInventory[COLLECTABLE_ITEMS_COUNT];
 int inventoryIdx = 0;
