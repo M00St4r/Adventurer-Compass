@@ -473,15 +473,25 @@ void loop() {
         average /= BUFFER_SIZE;
 
         if(average > 0) {
-            if(rssiAverage > -40) {
+            if(rssiAverage > -50) {
                 //setVibratorIntensity(1, deltaTime);
                 compassState = QUEST;
                 BLEDevice::getScan()->stop();
                 Serial.println("Quest Started!!!");
-            } else if(rssiAverage > -60) {
-                setVibratorIntensity(2, deltaTime);
-            } else if(rssiAverage > -80) {
-                setVibratorIntensity(3, deltaTime);
+                pixels.clear();
+                for (int i = 0; i < NUMPIXELS; i++) {
+                  pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+                }
+                pixels.show();
+                pixels.clear();
+            // } else if(rssiAverage > -60) {
+            //     setVibratorIntensity(2, deltaTime);
+            } else if(rssiAverage > -90) {
+              pixels.clear();
+              for(int j=0; j<NUMPIXELS; j++) {
+                pixels.setPixelColor(j, pixels.Color(0,map(rssiAverage, -80, -40, 0, 100),0));
+              }
+              pixels.show();
             }
         } else {
             setVibratorIntensity(0, deltaTime);
